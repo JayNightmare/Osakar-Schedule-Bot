@@ -17,7 +17,7 @@ const {
     // Discord Functions
     extractInviteCode,
     fetchInviteDetails,
-} = require('../Utils_Functions/utils-link.js');
+} = require('../Utils_Functions/utils-extract-details.js');
 
 module.exports = {
     help: {

@@ -1,6 +1,18 @@
 require('dotenv').config();
+const { StreamAnnouncement } = require('../../models/models.js');
+const axios = require('axios');
 
 const STREAM_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+// Save stream details to the database
+async function setStreamDetails(guildId, platform, channelName) {
+    await StreamAnnouncement.upsert({ guildId, platform, channelName });
+}
+
+// Get all stream announcements for all guilds
+async function getAllStreamDetails() {
+    return await StreamAnnouncement.findAll();
+}
 
 async function checkStreamLiveStatus(guildId, platform, channelName) {
     let isLive = false;
@@ -43,9 +55,64 @@ async function fetchTwitchStream(username) {
 
 // Fetch YouTube stream data (You can customize this logic)
 async function fetchYouTubeStream(channelName) {
-    // YouTube API implementation here
-    // Check for live stream status using the YouTube Data API
-    return null; // Placeholder
+    try {
+        // Resolve channel name to channel ID (if necessary)
+        const channelId = await getYouTubeChannelId(channelName);
+
+        if (!channelId) {
+            console.error(`Unable to find Channel ID for ${channelName}`);
+            return null;
+        }
+
+        // Search for live broadcasts on the channel
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+            params: {
+                part: 'snippet',
+                channelId: channelId,
+                type: 'video',
+                eventType: 'live', // This checks for active live streams
+                key: process.env.YOUTUBE_API_KEY // Your YouTube API key
+            }
+        });
+
+        // Check if there's a live video
+        const liveVideo = response.data.items[0];
+        if (liveVideo) {
+            return {
+                title: liveVideo.snippet.title,
+                url: `https://www.youtube.com/watch?v=${liveVideo.id.videoId}`,
+                thumbnail: liveVideo.snippet.thumbnails.high.url
+            };
+        }
+
+        return null; // Return null if there's no live stream
+    } catch (error) {
+        console.error('Error fetching YouTube stream:', error);
+        return null;
+    }
+}
+
+// Function to resolve a YouTube channel name to a Channel ID
+async function getYouTubeChannelId(channelName) {
+    try {
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+            params: {
+                part: 'id',
+                forUsername: channelName, // This tries to resolve a custom URL name
+                key: process.env.YOUTUBE_API_KEY
+            }
+        });
+
+        // Return the channel ID if found
+        if (response.data.items && response.data.items.length > 0) {
+            return response.data.items[0].id;
+        }
+
+        return channelName; // If the channelName is already a Channel ID
+    } catch (error) {
+        console.error('Error resolving YouTube Channel ID:', error);
+        return null;
+    }
 }
 
 // //
@@ -58,9 +125,21 @@ async function checkAllStreams() {
     }
 }
 
+setInterval(checkAllStreams, 5 * 60 * 1000); // Check every 5 minutes
+
 module.exports = {
-    checkTwitchStream,
-    checkYouTubeStream,
+    // Checker
     checkAllStreams,
-    STREAM_CHECK_INTERVAL,
+    checkStreamLiveStatus,
+
+    // Fetcher
+    fetchTwitchStream,
+    fetchYouTubeStream,
+
+    // Setter
+    setStreamDetails,
+
+    // Getter
+    getYouTubeChannelId,
+    getAllStreamDetails,
 };

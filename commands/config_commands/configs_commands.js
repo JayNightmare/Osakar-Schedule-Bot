@@ -3,7 +3,7 @@ const { Server, ReactionRole } = require('../../models/models.js'); // Import th
 
 const {
     setLinkChannel
-} = require('../Utils_Functions/utils-link.js');
+} = require('../Utils_Functions/utils-extract-details.js');
 
 const reactionRoleConfigurations = new Map();
 
