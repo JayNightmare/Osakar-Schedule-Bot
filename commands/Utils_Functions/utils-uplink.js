@@ -2,36 +2,75 @@ require('dotenv').config();
 const { StreamAnnouncement } = require('../../models/models.js');
 const axios = require('axios');
 
-const STREAM_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-
 // Save stream details to the database
-async function setStreamDetails(guildId, platform, channelName) {
-    await StreamAnnouncement.upsert({ guildId, platform, channelName });
+async function setStreamDetails(guildId, platform, channelName, announcementChannelId) {
+    await StreamAnnouncement.upsert({ guildId, platform, channelName, announcementChannelId });
 }
 
-// Get all stream announcements for all guilds
+  // Get all stream announcements for all guilds
 async function getAllStreamDetails() {
     return await StreamAnnouncement.findAll();
 }
 
-async function checkStreamLiveStatus(guildId, platform, channelName) {
+// Function to check if a specific channel is live on the given platform
+async function checkStreamLiveStatus(client, guildId, platform, channelName) {
     let isLive = false;
     let streamData = null;
 
+    // Fetch stream data based on platform
     if (platform === 'twitch') {
-        // Twitch API request
         streamData = await fetchTwitchStream(channelName);
         isLive = !!streamData;
     } else if (platform === 'youtube') {
-        // YouTube API request
         streamData = await fetchYouTubeStream(channelName);
         isLive = !!streamData;
     }
 
-    if (isLive) {
+    // Fetch the stream record to check the last announced time
+    const streamAnnouncement = await StreamAnnouncement.findOne({
+        where: { guildId, platform, channelName }
+    });
+
+    if (!streamAnnouncement || !streamAnnouncement.announcementChannelId) {
+        console.error(`No announcement channel set for ${channelName} in guild ${guildId}`);
+        return;
+    }
+
+    const { announcementChannelId, lastAnnouncedAt } = streamAnnouncement;
+    const announcementChannel = client.channels.cache.get(announcementChannelId);
+
+    // If stream is live and hasn't been announced yet (or it's a new stream)
+    if (isLive && (!lastAnnouncedAt || new Date(lastAnnouncedAt).getTime() < streamData.startedAt.getTime())) {
         console.log(`${channelName} is live on ${platform}!`);
-        // You can send an announcement to the guild's channel
-        // Customize this part to send to the right channel in Discord
+
+        if (announcementChannel) {
+            // Create an embed message for the live stream
+            const embed = {
+                color: platform === 'twitch' ? 0x9146FF : 0xFF0000, // Twitch purple or YouTube red
+                title: `${channelName} is now live on ${platform}!`,
+                url: streamData.url,
+                description: streamData.title,
+                image: { url: streamData.thumbnail },
+                footer: { text: 'Click the link above to watch the stream!' }
+            };
+
+            // Send the embed message to the announcement channel
+            await announcementChannel.send({ embeds: [embed] });
+
+            // Update the last announced time
+            await StreamAnnouncement.update(
+                { lastAnnouncedAt: new Date() },
+                { where: { guildId, platform, channelName } }
+            );
+        }
+    }
+
+    // If stream is offline, reset the last announced timestamp
+    if (!isLive && lastAnnouncedAt) {
+        await StreamAnnouncement.update(
+            { lastAnnouncedAt: null },
+            { where: { guildId, platform, channelName } }
+        );
     }
 }
 
@@ -46,7 +85,16 @@ async function fetchTwitchStream(username) {
                 'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
             }
         });
-        return response.data.data[0] || null; // Return stream data if available
+        const stream = response.data.data[0];
+        if (stream) {
+            return {
+                title: stream.title,
+                url: `https://www.twitch.tv/${username}`,
+                thumbnail: stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720'),
+                startedAt: new Date(stream.started_at)
+            };
+        }
+        return null; // No live stream
     } catch (error) {
         console.error('Error fetching Twitch stream:', error);
         return null;
@@ -81,7 +129,8 @@ async function fetchYouTubeStream(channelName) {
             return {
                 title: liveVideo.snippet.title,
                 url: `https://www.youtube.com/watch?v=${liveVideo.id.videoId}`,
-                thumbnail: liveVideo.snippet.thumbnails.high.url
+                thumbnail: liveVideo.snippet.thumbnails.high.url,
+                startedAt: new Date(liveVideo.snippet.publishedAt) // Make sure to parse the start time
             };
         }
 
@@ -117,15 +166,13 @@ async function getYouTubeChannelId(channelName) {
 
 // //
 
-async function checkAllStreams() {
+async function checkAllStreams(client) {
     const streams = await getAllStreamDetails();
     for (const stream of streams) {
         const { guildId, platform, channelName } = stream;
-        await checkStreamLiveStatus(guildId, platform, channelName);
+        await checkStreamLiveStatus(client, guildId, platform, channelName);
     }
 }
-
-setInterval(checkAllStreams, 5 * 60 * 1000); // Check every 5 minutes
 
 module.exports = {
     // Checker

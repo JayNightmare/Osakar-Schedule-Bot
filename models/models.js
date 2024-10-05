@@ -1,7 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('./sequelize');
 
-// User Model: Storing user information (for leveling and other features)
 const User = sequelize.define('User', {
     userId: {
         type: DataTypes.STRING,
@@ -18,7 +17,6 @@ const User = sequelize.define('User', {
     },
 });
 
-// Define the Server model
 const Server = sequelize.define('Server', {
     serverId: {
         type: DataTypes.STRING,
@@ -47,21 +45,27 @@ const LinkChannel = sequelize.define('LinkChannel', {
     }
 });
 
-// Define Twitch API
 const StreamAnnouncement = sequelize.define('StreamAnnouncement', {
     guildId: {
         type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true,
+        allowNull: false
     },
     platform: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
     },
     channelName: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
     },
+    announcementChannelId: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    lastAnnouncedAt: {
+        type: DataTypes.DATE,
+        allowNull: true // Initially null, updated when an announcement is made
+    }
 });
 
 const ReactionRole = sequelize.define('ReactionRoles', {

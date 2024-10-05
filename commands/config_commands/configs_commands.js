@@ -5,6 +5,23 @@ const {
     setLinkChannel
 } = require('../Utils_Functions/utils-extract-details.js');
 
+const {
+    // Checker
+    checkAllStreams,
+    checkStreamLiveStatus,
+
+    // Fetcher
+    fetchTwitchStream,
+    fetchYouTubeStream,
+
+    // Setter
+    setStreamDetails,
+
+    // Getter
+    getYouTubeChannelId,
+    getAllStreamDetails,
+} = require('../Utils_Functions/utils-uplink.js');
+
 const reactionRoleConfigurations = new Map();
 
 function getReactionRoleConfigurations() {
@@ -113,12 +130,13 @@ module.exports = {
         execute: async (interaction) => {
             const platform = interaction.options.getString('platform');
             const channelName = interaction.options.getString('channel_name');
+            const announcementChannel = interaction.options.getChannel('announcement_channel');
             const guildId = interaction.guildId;
 
             // Store the stream details in your database
-            await setStreamDetails(guildId, platform, channelName);
+            await setStreamDetails(guildId, platform, channelName, announcementChannel.id);
 
-            await interaction.reply(`Stream announcement setup for ${channelName} on ${platform}.`);
+            await interaction.reply(`Stream announcement setup for ${channelName} on ${platform} to post in ${announcementChannel.name}.`);
         }
     }
 }

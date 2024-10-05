@@ -34,6 +34,15 @@ const {
     loadReactionRoles
 } = require('./commands/Utils_Functions/utils-reactions.js');
 
+const {
+    // Timer
+    STREAM_CHECK_INTERVAL,
+
+    // Checker
+    checkAllStreams,
+
+} = require('./commands/Utils_Functions/utils-uplink.js');
+
 const commands = [
     new SlashCommandBuilder()
         .setName('set-link-channel')
@@ -64,20 +73,24 @@ const commands = [
                 ),
 
     new SlashCommandBuilder()
-    .setName('setup-stream')
-    .setDescription('Sets up a stream to monitor on Twitch or YouTube.')
-    .addStringOption(option =>
-        option.setName('platform')
-            .setDescription('Streaming platform (Twitch or YouTube)')
-            .setRequired(true)
-            .addChoices(
-                { name: 'Twitch', value: 'twitch' },
-                { name: 'YouTube', value: 'youtube' }
-            ))
-    .addStringOption(option =>
-        option.setName('channel_name')
-            .setDescription('The Twitch or YouTube channel name to monitor')
-            .setRequired(true)
+        .setName('setup-stream')
+        .setDescription('Sets up a stream to monitor and an announcement channel.')
+        .addStringOption(option =>
+            option.setName('platform')
+                .setDescription('Streaming platform (Twitch or YouTube)')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Twitch', value: 'twitch' },
+                    { name: 'YouTube', value: 'youtube' }
+                ))
+        .addStringOption(option =>
+            option.setName('channel_name')
+                .setDescription('The Twitch or YouTube channel name to monitor')
+                .setRequired(true))
+        .addChannelOption(option =>
+            option.setName('announcement_channel')
+                .setDescription('The Discord channel for stream announcements')
+                .setRequired(true)
     )
 ].map(command => command.toJSON());;
 
@@ -86,6 +99,11 @@ client.once('ready', async () => {
 
     try {
         console.log('Started refreshing application (/) commands');
+
+        try {
+            console.log('Checked All Streams');
+            setInterval(() => checkAllStreams(client), 5 * 60 * 1000);
+        } catch (error) { console.error('Error checking streams:', error); }
 
         // Fetch all guilds the bot is in
         const guilds = await client.guilds.fetch();
@@ -179,7 +197,7 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'set-link-channel') { console.log(`set link channel ran`); await configCommands.setupLinkChannel.execute(interaction, options); }
     if (commandName ==='submit-link') { console.log(`submit link ran`); await communityCommands.submitLink.execute(interaction, options); }
     // //
-
+    if (commandName === 'setup-stream') { console.log(`setup stream command ran`); await configCommands.setupStream.execute(interaction, options); }
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
 });
