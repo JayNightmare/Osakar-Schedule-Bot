@@ -108,4 +108,17 @@ module.exports = {
             await interaction.editReply(`Link submissions will now be sent to ${channel}.`);
         }
     }, 
+
+    setupStream: {
+        execute: async (interaction) => {
+            const platform = interaction.options.getString('platform');
+            const channelName = interaction.options.getString('channel_name');
+            const guildId = interaction.guildId;
+
+            // Store the stream details in your database
+            await setStreamDetails(guildId, platform, channelName);
+
+            await interaction.reply(`Stream announcement setup for ${channelName} on ${platform}.`);
+        }
+    }
 }

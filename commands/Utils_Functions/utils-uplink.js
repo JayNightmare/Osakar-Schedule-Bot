@@ -2,97 +2,59 @@ require('dotenv').config();
 
 const STREAM_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-async function checkTwitchStream(channelName) {
-    try {
-        const response = await axios.get(
-            `https://api.twitch.tv/helix/streams`,
-            {
-                params: { user_login: channelName },
-                headers: {
-                    "Client-ID": process.env.TWITCH_CLIENT_ID,
-                    Authorization: `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
-                },
-            }
-        );
+async function checkStreamLiveStatus(guildId, platform, channelName) {
+    let isLive = false;
+    let streamData = null;
 
-        const streamData = response.data.data[0]; // Returns an array; check if the first item exists
-        return streamData || null;
+    if (platform === 'twitch') {
+        // Twitch API request
+        streamData = await fetchTwitchStream(channelName);
+        isLive = !!streamData;
+    } else if (platform === 'youtube') {
+        // YouTube API request
+        streamData = await fetchYouTubeStream(channelName);
+        isLive = !!streamData;
+    }
+
+    if (isLive) {
+        console.log(`${channelName} is live on ${platform}!`);
+        // You can send an announcement to the guild's channel
+        // Customize this part to send to the right channel in Discord
+    }
+}
+
+// //
+
+async function fetchTwitchStream(username) {
+    try {
+        const response = await axios.get(`https://api.twitch.tv/helix/streams`, {
+            params: { user_login: username },
+            headers: {
+                'Client-ID': process.env.TWITCH_CLIENT_ID,
+                'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
+            }
+        });
+        return response.data.data[0] || null; // Return stream data if available
     } catch (error) {
-        console.error("Error checking Twitch stream:", error);
+        console.error('Error fetching Twitch stream:', error);
         return null;
     }
 }
 
-async function checkYouTubeStream(channelName) {
-    try {
-        const response = await axios.get(
-            `https://www.googleapis.com/youtube/v3/search`,
-            {
-                params: {
-                    part: "snippet",
-                    channelId: channelName, // You might need to get the channelId based on the channel name
-                    type: "video",
-                    eventType: "live",
-                    key: process.env.YOUTUBE_API_KEY,
-                },
-            }
-        );
-
-        const videoData = response.data.items[0]; // Check if there's a live video item
-        return videoData || null;
-    } catch (error) {
-        console.error("Error checking YouTube stream:", error);
-        return null;
-    }
+// Fetch YouTube stream data (You can customize this logic)
+async function fetchYouTubeStream(channelName) {
+    // YouTube API implementation here
+    // Check for live stream status using the YouTube Data API
+    return null; // Placeholder
 }
+
+// //
 
 async function checkAllStreams() {
-    const allStreams = await StreamAnnouncement.findAll();
-
-    for (const stream of allStreams) {
-        const { platform, channelName, guildId } = stream;
-
-        let isLive = false;
-        let streamData = null;
-
-        if (platform === "twitch") {
-            streamData = await checkTwitchStream(channelName);
-            isLive = !!streamData;
-        } else if (platform === "youtube") {
-            streamData = await checkYouTubeStream(channelName);
-            isLive = !!streamData;
-        }
-
-        // If live, send an announcement
-        if (isLive) {
-            const guild = client.guilds.cache.get(guildId);
-            const channel = guild.channels.cache.find(
-                (ch) => ch.name === "stream-announcements"
-            );
-
-            if (channel) {
-                const embed = {
-                    color: 0x1e90ff,
-                    title: `${channelName} is now live on ${platform}!`,
-                    url:
-                        platform === "twitch"
-                            ? `https://twitch.tv/${channelName}`
-                            : `https://youtube.com/channel/${channelName}`,
-                    description:
-                        streamData.title || "Check out the live stream!",
-                    image: {
-                        url: streamData.thumbnail_url
-                            .replace("{width}", "1280")
-                            .replace("{height}", "720"),
-                    },
-                    footer: {
-                        text: "Click the link above to watch the stream!",
-                    },
-                };
-
-                await channel.send({ embeds: [embed] });
-            }
-        }
+    const streams = await getAllStreamDetails();
+    for (const stream of streams) {
+        const { guildId, platform, channelName } = stream;
+        await checkStreamLiveStatus(guildId, platform, channelName);
     }
 }
 

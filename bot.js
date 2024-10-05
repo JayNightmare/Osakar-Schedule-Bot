@@ -1,4 +1,4 @@
-const { Client, PermissionFlagsBits, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events } = require('discord.js');
+const { Client, PermissionsBitField, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events } = require('discord.js');
 require('dotenv').config();
 const rest = new REST({ version: '10' }).setToken(process.env.TEST_TOKEN);
 
@@ -53,21 +53,33 @@ const commands = [
                 .setRequired(true)),
 
     new SlashCommandBuilder()
-        .setName('announce-stream')
-        .setDescription('Announces a stream going live.')
-        .addStringOption(option => 
-            option.setName('title')
-            .setDescription('Title of the stream')
-            .setRequired(true))
-        .addStringOption(option => 
-            option.setName('url')
-            .setDescription('Link to the stream')
-            .setRequired(true))
-        .addStringOption(option => 
-            option.setName('image-url')
-            .setDescription('URL of the image to show in the embed')
-            .setRequired(true)),
-];
+        .setName('setup-reaction-role')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
+
+        .setDescription('Sets up a reaction role message')
+        .addChannelOption(option =>
+            option.setName('channel')
+                .setDescription('The channel where the reaction role message will be sent')
+                .setRequired(true)
+                ),
+
+    new SlashCommandBuilder()
+    .setName('setup-stream')
+    .setDescription('Sets up a stream to monitor on Twitch or YouTube.')
+    .addStringOption(option =>
+        option.setName('platform')
+            .setDescription('Streaming platform (Twitch or YouTube)')
+            .setRequired(true)
+            .addChoices(
+                { name: 'Twitch', value: 'twitch' },
+                { name: 'YouTube', value: 'youtube' }
+            ))
+    .addStringOption(option =>
+        option.setName('channel_name')
+            .setDescription('The Twitch or YouTube channel name to monitor')
+            .setRequired(true)
+    )
+].map(command => command.toJSON());;
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -167,8 +179,9 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'set-link-channel') { console.log(`set link channel ran`); await configCommands.setupLinkChannel.execute(interaction, options); }
     if (commandName ==='submit-link') { console.log(`submit link ran`); await communityCommands.submitLink.execute(interaction, options); }
     // //
-    if (commandName === 'announce-stream') { console.log(`announce stream ran`); await communityCommands.streamAnnounce.execute(interaction, options); }
+
     // //
+    if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
 });
 
 
