@@ -31,7 +31,7 @@ async function checkStreamLiveStatus(client, guildId, platform, channelName) {
         where: { guildId, platform, channelName }
     });
 
-    if (!streamAnnouncement || !streamAnnouncement.announcementChannelId) {
+    if (!streamAnnouncement?.announcementChannelId) {
         console.error(`No announcement channel set for ${channelName} in guild ${guildId}`);
         return;
     }
@@ -78,6 +78,7 @@ async function checkStreamLiveStatus(client, guildId, platform, channelName) {
 
 async function fetchTwitchStream(username) {
     try {
+        // Make the request to the Twitch API to get the stream information
         const response = await axios.get(`https://api.twitch.tv/helix/streams`, {
             params: { user_login: username },
             headers: {
@@ -85,6 +86,8 @@ async function fetchTwitchStream(username) {
                 'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
             }
         });
+
+        // Check the response data
         const stream = response.data.data[0];
         if (stream) {
             return {
@@ -94,9 +97,14 @@ async function fetchTwitchStream(username) {
                 startedAt: new Date(stream.started_at)
             };
         }
-        return null; // No live stream
+
+        // No live stream found
+        return null;
+
     } catch (error) {
-        console.error('Error fetching Twitch stream:', error);
+        // Detailed error logging
+        console.error('Error fetching Twitch stream:', error.message);
+        console.error('Response data:', error.response ? error.response.data : 'No response data');
         return null;
     }
 }

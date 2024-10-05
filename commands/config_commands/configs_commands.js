@@ -5,28 +5,11 @@ const {
     setLinkChannel
 } = require('../Utils_Functions/utils-extract-details.js');
 
-const {
-    // Checker
-    checkAllStreams,
-    checkStreamLiveStatus,
-
-    // Fetcher
-    fetchTwitchStream,
-    fetchYouTubeStream,
-
-    // Setter
-    setStreamDetails,
-
-    // Getter
-    getYouTubeChannelId,
-    getAllStreamDetails,
-} = require('../Utils_Functions/utils-uplink.js');
+const { setStreamDetails } = require('../Utils_Functions/utils-uplink.js');
 
 const reactionRoleConfigurations = new Map();
 
-function getReactionRoleConfigurations() {
-    return reactionRoleConfigurations;
-}
+function getReactionRoleConfigurations() { return reactionRoleConfigurations; }
 
 module.exports = {
     // //

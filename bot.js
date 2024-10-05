@@ -34,14 +34,7 @@ const {
     loadReactionRoles
 } = require('./commands/Utils_Functions/utils-reactions.js');
 
-const {
-    // Timer
-    STREAM_CHECK_INTERVAL,
-
-    // Checker
-    checkAllStreams,
-
-} = require('./commands/Utils_Functions/utils-uplink.js');
+const { checkAllStreams } = require('./commands/Utils_Functions/utils-uplink.js');
 
 const commands = [
     new SlashCommandBuilder()
@@ -102,7 +95,7 @@ client.once('ready', async () => {
 
         try {
             console.log('Checked All Streams');
-            setInterval(() => checkAllStreams(client), 5 * 60 * 1000);
+            setInterval(() => checkAllStreams(client), 1000);
         } catch (error) { console.error('Error checking streams:', error); }
 
         // Fetch all guilds the bot is in
