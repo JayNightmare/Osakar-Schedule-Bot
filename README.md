@@ -13,6 +13,9 @@
       <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/JayNightmare/Saiyan-Senshi-Bot?color=0088ff" />
     </a>
     <br/>
+
+[![Node.js](https://github.com/JayNightmare/Osakar-Schedule-Bot/actions/workflows/node.js.yml/badge.svg)](https://github.com/JayNightmare/Osakar-Schedule-Bot/actions/workflows/node.js.yml)
+    
 </div>
 
 <div align="center">
