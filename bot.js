@@ -37,6 +37,7 @@ const {
 const { checkAllStreams } = require('./commands/Utils_Functions/utils-uplink.js');
 
 const commands = [
+    // * Set Link Commands
     new SlashCommandBuilder()
         .setName('set-link-channel')
         .setDescription('Sets a channel for submitting links.')
@@ -54,6 +55,9 @@ const commands = [
                 .setDescription('The link to submit')
                 .setRequired(true)),
 
+    // //
+
+    // * Setup Reaction Commands
     new SlashCommandBuilder()
         .setName('setup-reaction-role')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
@@ -65,6 +69,9 @@ const commands = [
                 .setRequired(true)
                 ),
 
+    // //
+
+    // * Stream Announcement Commands
     new SlashCommandBuilder()
         .setName('setup-stream')
         .setDescription('Sets up a stream to monitor and an announcement channel.')
@@ -84,7 +91,39 @@ const commands = [
             option.setName('announcement_channel')
                 .setDescription('The Discord channel for stream announcements')
                 .setRequired(true)
-    )
+    ),
+
+    new SlashCommandBuilder()
+        .setName('update-stream')
+        .setDescription('Update Stream Details Information')
+        .addStringOption(option =>
+            option.setName('platform')
+                .setDescription('Streaming platform (Twitch or YouTube)')
+                .addChoices(
+                    { name: 'Twitch', value: 'twitch' },
+                    { name: 'YouTube', value: 'youtube' }))
+        .addStringOption(option =>
+            option.setName('channel_name')
+                .setDescription('The Twitch or YouTube channel name to monitor'))
+        .addChannelOption(option =>
+            option.setName('announcement_channel')
+                .setDescription('The Discord channel for stream announcements')),
+
+    new SlashCommandBuilder()
+        .setName('remove-stream')
+        .setDescription('Remove a platform or channel')
+        .addStringOption(option =>
+            option.setName('platform')
+                .setDescription('Streaming platform (Twitch or YouTube)')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Twitch', value: 'twitch' },
+                    { name: 'YouTube', value: 'youtube' }
+                ))
+        .addStringOption(option =>
+            option.setName('channel_name')
+                .setDescription('The Twitch or YouTube channel name to monitor')
+                .setRequired(true))
 ].map(command => command.toJSON());;
 
 client.once('ready', async () => {
@@ -95,7 +134,7 @@ client.once('ready', async () => {
 
         try {
             console.log('Checked All Streams');
-            setInterval(() => checkAllStreams(client), 1000);
+            setInterval(() => checkAllStreams(client), 5000); // 5 * 60 * 1000
         } catch (error) { console.error('Error checking streams:', error); }
 
         // Fetch all guilds the bot is in
@@ -191,6 +230,8 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName ==='submit-link') { console.log(`submit link ran`); await communityCommands.submitLink.execute(interaction, options); }
     // //
     if (commandName === 'setup-stream') { console.log(`setup stream command ran`); await configCommands.setupStream.execute(interaction, options); }
+    if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
+    if (commandName ==='remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
 });

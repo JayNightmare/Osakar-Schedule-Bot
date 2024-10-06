@@ -5,7 +5,7 @@ const {
     setLinkChannel
 } = require('../Utils_Functions/utils-extract-details.js');
 
-const { setStreamDetails } = require('../Utils_Functions/utils-uplink.js');
+const { setStreamDetails, updateStreamDetails, removeStreamDetails } = require('../Utils_Functions/utils-uplink.js');
 
 const reactionRoleConfigurations = new Map();
 
@@ -120,6 +120,39 @@ module.exports = {
             await setStreamDetails(guildId, platform, channelName, announcementChannel.id);
 
             await interaction.reply(`Stream announcement setup for ${channelName} on ${platform} to post in ${announcementChannel.name}.`);
+        }
+    },
+
+    updateStream: {
+        execute: async (interaction) => {
+            const platform = interaction.options.getString('platform');
+            const channelName = interaction.options.getString('channelName');
+            const newAnnouncementChannel = interaction.options.getChannel('announcement_channel');
+            const guildId = interaction.guildId;
+
+            try {
+                await updateStreamDetails(guildId, platform, channelName, newAnnouncementChannel.id);
+                await interaction.reply('Stream details updated successfully!');
+            } catch (error) {
+                console.error(error);
+                await interaction.reply('Failed to update stream details.');
+            }
+        }
+    },
+
+    removeStream: {
+        execute: async (interaction) => {
+            const platform = interaction.options.getString('platform');
+            const channelName = interaction.options.getString('channel_name');
+            const guildId = interaction.guild.id;
+
+            try {
+                await removeStreamDetails(guildId, platform, channelName);
+                await interaction.reply('Stream details removed successfully!');
+            } catch (error) {
+                console.error(error);
+                await interaction.reply('Failed to remove stream details.');
+            }
         }
     }
 }

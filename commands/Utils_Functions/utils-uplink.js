@@ -4,8 +4,46 @@ const axios = require('axios');
 
 // Save stream details to the database
 async function setStreamDetails(guildId, platform, channelName, announcementChannelId) {
-    await StreamAnnouncement.upsert({ guildId, platform, channelName, announcementChannelId });
+    // Check if the record already exists
+    const [streamAnnouncement, created] = await StreamAnnouncement.findOrCreate({
+        where: { guildId, platform, channelName },
+        defaults: { announcementChannelId }
+    });
+
+    // If the record already exists, update the announcement channel ID
+    if (!created) {
+        await streamAnnouncement.update({ announcementChannelId });
+    }
+
+    return streamAnnouncement;
 }
+
+async function updateStreamDetails(guildId, platform, channelName, newAnnouncementChannelId) {
+    const streamAnnouncement = await StreamAnnouncement.findOne({
+        where: { guildId, platform, channelName }
+    });
+
+    if (!streamAnnouncement) {
+        throw new Error(`Stream details not found for ${platform} ${channelName} in guild ${guildId}.`);
+    }
+
+    await streamAnnouncement.update({ announcementChannelId: newAnnouncementChannelId });
+    return streamAnnouncement;
+}
+
+async function removeStreamDetails(guildId, platform, channelName) {
+    const streamAnnouncement = await StreamAnnouncement.findOne({
+        where: { guildId, platform, channelName }
+    });
+
+    if (!streamAnnouncement) {
+        throw new Error(`Stream details not found for ${platform} ${channelName} in guild ${guildId}.`);
+    }
+
+    await streamAnnouncement.destroy();
+    return true; // Optional: return true or some confirmation of deletion
+}
+
 
   // Get all stream announcements for all guilds
 async function getAllStreamDetails() {
@@ -152,22 +190,24 @@ async function fetchYouTubeStream(channelName) {
 // Function to resolve a YouTube channel name to a Channel ID
 async function getYouTubeChannelId(channelName) {
     try {
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+        // Make a request to YouTube API to get the channel details
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
-                part: 'id',
-                forUsername: channelName, // This tries to resolve a custom URL name
+                part: 'snippet',
+                forUsername: channelName,
                 key: process.env.YOUTUBE_API_KEY
             }
         });
 
-        // Return the channel ID if found
-        if (response.data.items && response.data.items.length > 0) {
-            return response.data.items[0].id;
+        // Extract channelId from response
+        if (response.data.items.length > 0) {
+            return response.data.items[0].id; // The channelId
+        } else {
+            console.log('No channel found with this name');
+            return null;
         }
-
-        return channelName; // If the channelName is already a Channel ID
     } catch (error) {
-        console.error('Error resolving YouTube Channel ID:', error);
+        console.error('Error fetching YouTube channel ID:', error.message);
         return null;
     }
 }
@@ -183,18 +223,22 @@ async function checkAllStreams(client) {
 }
 
 module.exports = {
-    // Checker
+    // Checkers
     checkAllStreams,
     checkStreamLiveStatus,
 
-    // Fetcher
+    // Updaters
+    updateStreamDetails,
+    removeStreamDetails,
+
+    // Fetchers
     fetchTwitchStream,
     fetchYouTubeStream,
 
     // Setter
     setStreamDetails,
 
-    // Getter
+    // Getters
     getYouTubeChannelId,
     getAllStreamDetails,
 };
