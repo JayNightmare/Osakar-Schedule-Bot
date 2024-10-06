@@ -46,3 +46,18 @@ Submit an `Issue` and tell me what's wrong.
 
 ## Things to note before cloning
 This codebase is uses discord.js, sqlite3, .env, and a few other packages. If you experience a problem with a package, don't blame me. Do `npm install` to install all dependencies from package.json.
+
+### How to use
+1. "How do I get my Channel ID for YouTube?"
+- Go to your settings -> advanced settings -> channel id.
+
+2. "I went live but the notification isn't appearing?"
+- The bot is on a 15 minute interval. This is because of API limiations as too many calls and the whole thing will freeze.
+
+3. "How do I get my Playlist ID for YouTube?"
+- Click on your playlist to view the list of videos in your playlist. From here, go to the URL and you'll see `https://www.youtube.com/playlist?list=numbers`. Copy the numbers from `list=` and paste it into the `playlistid` value. 
+![alt text](image-1.png)
+
+4. "How do I put my video into the playlist?"
+- Get the url of the video you want to add/remove from the playlist and enter it into the value.
+

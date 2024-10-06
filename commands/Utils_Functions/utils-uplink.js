@@ -3,16 +3,20 @@ const { StreamAnnouncement } = require('../../models/models.js');
 const axios = require('axios');
 
 // Save stream details to the database
-async function setStreamDetails(guildId, platform, channelName, announcementChannelId) {
+async function setStreamDetails(guildId, platform, channelName, announcementChannelId, customMessage) {
     // Check if the record already exists
     const [streamAnnouncement, created] = await StreamAnnouncement.findOrCreate({
         where: { guildId, platform, channelName },
-        defaults: { announcementChannelId }
+        defaults: { announcementChannelId, customMessage }
     });
 
-    // If the record already exists, update the announcement channel ID
+    console.log(`Info: Set stream details for ${platform} ${channelName} in guild ${guildId}. Announcement channel ID: ${announcementChannelId}, custom message: ${customMessage || 'None provided'}.`)
+
+    // If the record already exists, update the announcement channel ID and custom message (if provided)
     if (!created) {
-        await streamAnnouncement.update({ announcementChannelId });
+        const updates = { announcementChannelId };
+        if (customMessage) updates.customMessage = customMessage;
+        await streamAnnouncement.update(updates);
     }
 
     return streamAnnouncement;
@@ -55,19 +59,21 @@ async function checkStreamLiveStatus(client, guildId, platform, channelName) {
     let isLive = false;
     let streamData = null;
 
-    // Fetch stream data based on platform
+    // Resolve YouTube channel ID only once
+    const channelId = platform === 'youtube' ? await getYouTubeChannelId(channelName) : channelName;
+
     if (platform === 'twitch') {
-        streamData = await fetchTwitchStream(channelName);
-        isLive = !!streamData;
-    } else if (platform === 'youtube') {
-        streamData = await fetchYouTubeStream(channelName);
+        streamData = await fetchTwitchData(channelName);
+        isLive = !!streamData && streamData.startedAt;
+    } else if (platform === 'youtube' && channelId) {
+        streamData = await fetchYouTubeStream(channelId);
         isLive = !!streamData;
     }
 
+    if (!channelId) return; // Exit if no channel ID found
+
     // Fetch the stream record to check the last announced time
-    const streamAnnouncement = await StreamAnnouncement.findOne({
-        where: { guildId, platform, channelName }
-    });
+    const streamAnnouncement = await StreamAnnouncement.findOne({ where: { guildId, platform, channelName } });
 
     if (!streamAnnouncement?.announcementChannelId) {
         console.error(`No announcement channel set for ${channelName} in guild ${guildId}`);
@@ -76,138 +82,140 @@ async function checkStreamLiveStatus(client, guildId, platform, channelName) {
 
     const { announcementChannelId, lastAnnouncedAt } = streamAnnouncement;
     const announcementChannel = client.channels.cache.get(announcementChannelId);
+    const description = streamAnnouncement.customMessage
+        ? `${streamAnnouncement.customMessage}`
+        : `${streamData.title} ${channelName} is now live on ${platform}!`;
 
-    // If stream is live and hasn't been announced yet (or it's a new stream)
+    // Announce if the stream is live and hasn't been announced before
     if (isLive && (!lastAnnouncedAt || new Date(lastAnnouncedAt).getTime() < streamData.startedAt.getTime())) {
-        console.log(`${channelName} is live on ${platform}!`);
-
         if (announcementChannel) {
-            // Create an embed message for the live stream
             const embed = {
-                color: platform === 'twitch' ? 0x9146FF : 0xFF0000, // Twitch purple or YouTube red
-                title: `${channelName} is now live on ${platform}!`,
+                color: platform === 'twitch' ? 0x9146FF : 0xFF0000,
+                title: `${streamData.title}`,
+                author: { name: streamData.username, url: streamData.url, icon_url: streamData.profileImage },
+                thumbnail: { url: platform === 'twitch' ? streamData.profileImage : null },
                 url: streamData.url,
-                description: streamData.title,
+                description: description,
+                fields: [
+                    { name: 'Viewers', value: streamData.viewerCount.toString(), inline: true },
+                ],
                 image: { url: streamData.thumbnail },
                 footer: { text: 'Click the link above to watch the stream!' }
             };
-
-            // Send the embed message to the announcement channel
             await announcementChannel.send({ embeds: [embed] });
 
             // Update the last announced time
-            await StreamAnnouncement.update(
-                { lastAnnouncedAt: new Date() },
-                { where: { guildId, platform, channelName } }
-            );
+            await StreamAnnouncement.update({ lastAnnouncedAt: new Date() }, { where: { guildId, platform, channelName } });
         }
     }
 
-    // If stream is offline, reset the last announced timestamp
+    // Reset the last announced timestamp if the stream goes offline
     if (!isLive && lastAnnouncedAt) {
-        await StreamAnnouncement.update(
-            { lastAnnouncedAt: null },
-            { where: { guildId, platform, channelName } }
-        );
+        await StreamAnnouncement.update({ lastAnnouncedAt: null }, { where: { guildId, platform, channelName } });
     }
 }
 
 // //
 
-async function fetchTwitchStream(username) {
+async function fetchTwitchData(username) {
     try {
-        // Make the request to the Twitch API to get the stream information
-        const response = await axios.get(`https://api.twitch.tv/helix/streams`, {
-            params: { user_login: username },
-            headers: {
-                'Client-ID': process.env.TWITCH_CLIENT_ID,
-                'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
-            }
-        });
+        // Make both requests in parallel
+        const [streamResponse, userResponse] = await Promise.all([
+            axios.get('https://api.twitch.tv/helix/streams', {
+                params: { user_login: username },
+                headers: {
+                    'Client-ID': process.env.TWITCH_CLIENT_ID,
+                    'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
+                }
+            }),
+            axios.get('https://api.twitch.tv/helix/users', {
+                params: { login: username },
+                headers: {
+                    'Client-ID': process.env.TWITCH_CLIENT_ID,
+                    'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
+                }
+            })
+        ]);
 
-        // Check the response data
-        const stream = response.data.data[0];
+        const stream = streamResponse.data.data[0];
+        const user = userResponse.data.data[0];
+
+        // If the stream is live, collect details
         if (stream) {
             return {
                 title: stream.title,
                 url: `https://www.twitch.tv/${username}`,
                 thumbnail: stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720'),
-                startedAt: new Date(stream.started_at)
+                startedAt: new Date(stream.started_at),
+                viewerCount: stream.viewer_count,
+                profileImage: user.profile_image_url,
+                username: user.display_name
             };
         }
 
-        // No live stream found
-        return null;
-
+        // Return user data if stream is offline
+        return {
+            profileImage: user.profile_image_url,
+            username: user.display_name
+        };
+        
     } catch (error) {
-        // Detailed error logging
-        console.error('Error fetching Twitch stream:', error.message);
-        console.error('Response data:', error.response ? error.response.data : 'No response data');
+        console.error('Error fetching Twitch data:', error.message);
         return null;
     }
 }
 
-// Fetch YouTube stream data (You can customize this logic)
-async function fetchYouTubeStream(channelName) {
-    try {
-        // Resolve channel name to channel ID (if necessary)
-        const channelId = await getYouTubeChannelId(channelName);
+// //
 
-        if (!channelId) {
-            console.error(`Unable to find Channel ID for ${channelName}`);
+// Fetch YouTube stream data (You can customize this logic)
+async function getYouTubeChannelId(handle) {
+    try {
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+            params: {
+                part: 'snippet',
+                q: handle,
+                type: 'channel',
+                key: process.env.YOUTUBE_API_KEY
+            }
+        });
+
+        if (response.data.items.length > 0) {
+            return response.data.items[0].snippet.channelId;
+        } else {
+            console.log('No channel found with this handle');
             return null;
         }
+    } catch (error) {
+        console.error('Error fetching YouTube channel ID:', error.message);
+        return null;
+    }
+}
 
-        // Search for live broadcasts on the channel
+// Function to fetch live stream details for a YouTube channel
+async function fetchYouTubeStream(channelId) {
+    try {
         const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
                 part: 'snippet',
                 channelId: channelId,
                 type: 'video',
-                eventType: 'live', // This checks for active live streams
-                key: process.env.YOUTUBE_API_KEY // Your YouTube API key
+                eventType: 'live',
+                key: process.env.YOUTUBE_API_KEY
             }
         });
 
-        // Check if there's a live video
         const liveVideo = response.data.items[0];
         if (liveVideo) {
             return {
                 title: liveVideo.snippet.title,
                 url: `https://www.youtube.com/watch?v=${liveVideo.id.videoId}`,
                 thumbnail: liveVideo.snippet.thumbnails.high.url,
-                startedAt: new Date(liveVideo.snippet.publishedAt) // Make sure to parse the start time
+                startedAt: new Date(liveVideo.snippet.publishedAt)
             };
         }
-
-        return null; // Return null if there's no live stream
-    } catch (error) {
-        console.error('Error fetching YouTube stream:', error);
         return null;
-    }
-}
-
-// Function to resolve a YouTube channel name to a Channel ID
-async function getYouTubeChannelId(channelName) {
-    try {
-        // Make a request to YouTube API to get the channel details
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-            params: {
-                part: 'snippet',
-                forUsername: channelName,
-                key: process.env.YOUTUBE_API_KEY
-            }
-        });
-
-        // Extract channelId from response
-        if (response.data.items.length > 0) {
-            return response.data.items[0].id; // The channelId
-        } else {
-            console.log('No channel found with this name');
-            return null;
-        }
     } catch (error) {
-        console.error('Error fetching YouTube channel ID:', error.message);
+        console.error('Error fetching YouTube stream:', error.message);
         return null;
     }
 }
@@ -222,6 +230,89 @@ async function checkAllStreams(client) {
     }
 }
 
+// //
+
+function extractVideoId(url) {
+    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+async function addVideoToPlaylist(playlistId, videoId, accessToken) {
+    try {
+        const url = interaction.options.getString('url');
+        const videoId = extractVideoId(url);
+
+        if (!videoId) {
+            return interaction.reply('Invalid YouTube URL provided.');
+        }
+
+        const response = await axios.post('https://www.googleapis.com/youtube/v3/playlistItems', {
+            snippet: {
+                playlistId: playlistId,
+                resourceId: {
+                    kind: 'youtube#video',
+                    videoId: videoId
+                }
+            }
+        }, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Video added:', response.data);
+    } catch (error) {
+        console.error('Error adding video:', error.message);
+        throw error;
+    }
+}
+
+async function removeVideoFromPlaylist(playlistId, videoId, accessToken) {
+    try {
+        const url = interaction.options.getString('url');
+        const videoId = extractVideoId(url);
+        
+        if (!videoId) {
+            return interaction.reply('Invalid YouTube URL provided.');
+        }
+
+        // Find the playlistItemId to remove the video from the playlist
+        const playlistItemResponse = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+            params: {
+                part: 'id',
+                playlistId: playlistId,
+                videoId: videoId,
+                key: process.env.YOUTUBE_API_KEY
+            },
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        const playlistItemId = playlistItemResponse.data.items[0]?.id;
+
+        if (playlistItemId) {
+            // Make delete request
+            await axios.delete(`https://www.googleapis.com/youtube/v3/playlistItems`, {
+                params: {
+                    id: playlistItemId,
+                    key: process.env.YOUTUBE_API_KEY
+                },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            });
+            console.log('Video removed:', playlistItemId);
+        } else {
+            throw new Error('Video not found in playlist');
+        }
+    } catch (error) {
+        console.error('Error removing video:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     // Checkers
     checkAllStreams,
@@ -232,7 +323,7 @@ module.exports = {
     removeStreamDetails,
 
     // Fetchers
-    fetchTwitchStream,
+    fetchTwitchData,
     fetchYouTubeStream,
 
     // Setter
@@ -241,4 +332,8 @@ module.exports = {
     // Getters
     getYouTubeChannelId,
     getAllStreamDetails,
+
+    // Video Playlist
+    addVideoToPlaylist,
+    removeVideoFromPlaylist,
 };

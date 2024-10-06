@@ -1,11 +1,11 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const { Server, ReactionRole } = require('../../models/models.js'); // Import the Sequelize User model
+const { Server, ReactionRole, StreamAnnouncement } = require('../../models/models.js'); // Import the Sequelize User model
 
 const {
     setLinkChannel
 } = require('../Utils_Functions/utils-extract-details.js');
 
-const { setStreamDetails, updateStreamDetails, removeStreamDetails } = require('../Utils_Functions/utils-uplink.js');
+const { setStreamDetails, updateStreamDetails, removeStreamDetails, getYouTubeChannelId } = require('../Utils_Functions/utils-uplink.js');
 
 const reactionRoleConfigurations = new Map();
 
@@ -111,15 +111,47 @@ module.exports = {
 
     setupStream: {
         execute: async (interaction) => {
-            const platform = interaction.options.getString('platform');
-            const channelName = interaction.options.getString('channel_name');
-            const announcementChannel = interaction.options.getChannel('announcement_channel');
-            const guildId = interaction.guildId;
+            try {
+                const platform = interaction.options.getString('platform');
+                const channelId = interaction.options.getString('channel');
+                const announcementChannel = interaction.options.getChannel('announcement_channel');
+                const description = interaction.options.getString('description');
+                const guildId = interaction.guildId;
+    
+                if (channelId) {
+                    // Proceed with setting the stream details in your database
+                    await setStreamDetails(guildId, platform, channelId, announcementChannel.id, description);
+                    await interaction.reply(`Successfully set up stream for ${platform}`);
+                } else {
+                    await interaction.reply(`Failed to find YouTube channel for ${platform}`);
+                }
+            } catch (error) {
+                console.error(error);
+                await interaction.reply('Failed to set up stream.');
+            }
+        }
+    },
 
-            // Store the stream details in your database
-            await setStreamDetails(guildId, platform, channelName, announcementChannel.id);
-
-            await interaction.reply(`Stream announcement setup for ${channelName} on ${platform} to post in ${announcementChannel.name}.`);
+    setupStreamMessage: {
+        execute: async (interaction) => {
+            try {
+                const platform = interaction.options.getString('platform');
+                const channelId = interaction.options.getString('channel');
+                const announcementChannel = await StreamAnnouncement.announcementChannelId;
+                const description = interaction.options.getString('message');
+                const guildId = interaction.guildId;
+    
+                if (channelId) {
+                    // Proceed with setting the stream details in your database
+                    await setStreamDetails(guildId, platform, channelId, announcementChannel, description);
+                    await interaction.reply(`Successfully set up stream for ${platform}`);
+                } else {
+                    await interaction.reply(`Failed to find YouTube channel for ${platform}`);
+                }
+            } catch (error) {
+                console.error(error);
+                await interaction.reply('Failed to set up stream.');
+            }
         }
     },
 
@@ -154,5 +186,7 @@ module.exports = {
                 await interaction.reply('Failed to remove stream details.');
             }
         }
-    }
+    },
+
+    playList
 }

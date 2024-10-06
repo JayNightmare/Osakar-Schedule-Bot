@@ -1,6 +1,6 @@
 const { Client, PermissionsBitField, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events } = require('discord.js');
 require('dotenv').config();
-const rest = new REST({ version: '10' }).setToken(process.env.TEST_TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
 
 const { Server, User, ReactionRole } = require('./models/models.js');
 
@@ -37,7 +37,7 @@ const {
 const { checkAllStreams } = require('./commands/Utils_Functions/utils-uplink.js');
 
 const commands = [
-    // * Set Link Commands
+    // ! Set Link Commands
     new SlashCommandBuilder()
         .setName('set-link-channel')
         .setDescription('Sets a channel for submitting links.')
@@ -57,7 +57,7 @@ const commands = [
 
     // //
 
-    // * Setup Reaction Commands
+    // ! Setup Reaction Commands
     new SlashCommandBuilder()
         .setName('setup-reaction-role')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
@@ -71,7 +71,7 @@ const commands = [
 
     // //
 
-    // * Stream Announcement Commands
+    // ! Stream Announcement Commands
     new SlashCommandBuilder()
         .setName('setup-stream')
         .setDescription('Sets up a stream to monitor and an announcement channel.')
@@ -84,12 +84,33 @@ const commands = [
                     { name: 'YouTube', value: 'youtube' }
                 ))
         .addStringOption(option =>
-            option.setName('channel_name')
-                .setDescription('The Twitch or YouTube channel name to monitor')
+            option.setName('channel')
+                .setDescription('Twitch: Channel Name | YouTube: Channel ID')
                 .setRequired(true))
         .addChannelOption(option =>
             option.setName('announcement_channel')
                 .setDescription('The Discord channel for stream announcements')
+                .setRequired(true)
+    ),
+
+    new SlashCommandBuilder()
+        .setName('setup-stream-message')
+        .setDescription('Sets up a stream message to monitor and an announcement channel.')
+        .addStringOption(option =>
+            option.setName('platform')
+                .setDescription('Streaming platform (Twitch or YouTube)')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Twitch', value: 'twitch' },
+                    { name: 'YouTube', value: 'youtube' }
+                ))
+        .addStringOption(option =>
+            option.setName('channel')
+                .setDescription('Twitch: Channel Name | YouTube: Channel ID')
+                .setRequired(true))
+        .addStringOption(option =>
+            option.setName('message')
+                .setDescription('Message you want to send as a stream announcement')
                 .setRequired(true)
     ),
 
@@ -123,7 +144,44 @@ const commands = [
         .addStringOption(option =>
             option.setName('channel_name')
                 .setDescription('The Twitch or YouTube channel name to monitor')
+                .setRequired(true)),
+
+    // //
+
+    // ! Playlist Video
+    new SlashCommandBuilder()
+        .setName('playlist-video')
+        .setDescription('Add or remove a YouTube video from a playlist')
+        .addStringOption(option => 
+            option.setName('action')
+                .setDescription('Choose to add or remove the video')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Add', value: 'add' },
+                    { name: 'Remove', value: 'remove' }
+                ))
+        .addStringOption(option => 
+            option.setName('playlistid')
+                .setDescription('The ID of the YouTube playlist')
                 .setRequired(true))
+        .addStringOption(option => 
+            option.setName('url')
+                .setDescription('The url of the YouTube video to add or remove')
+                .setRequired(true)),
+
+    // //
+
+    // ! View Streams In Database
+    new SlashCommandBuilder()
+        .setName('view-streams')
+        .setDescription('View all streams in the database')
+        .addStringOption(option =>
+            option.setName('platform')
+                .setDescription('Streaming platform (Twitch or YouTube)')
+                .addChoices(
+                    { name: 'Twitch', value: 'twitch' },
+                    { name: 'YouTube', value: 'youtube' }
+                ))
 ].map(command => command.toJSON());;
 
 client.once('ready', async () => {
@@ -134,7 +192,7 @@ client.once('ready', async () => {
 
         try {
             console.log('Checked All Streams');
-            setInterval(() => checkAllStreams(client), 5000); // 5 * 60 * 1000
+            setInterval(() => checkAllStreams(client), 5 * 60 * 1000); // 5 * 60 * 1000
         } catch (error) { console.error('Error checking streams:', error); }
 
         // Fetch all guilds the bot is in
@@ -230,8 +288,11 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName ==='submit-link') { console.log(`submit link ran`); await communityCommands.submitLink.execute(interaction, options); }
     // //
     if (commandName === 'setup-stream') { console.log(`setup stream command ran`); await configCommands.setupStream.execute(interaction, options); }
+    if (commandName === 'setup-stream-message') { console.log(`setup stream message command ran`); await configCommands.setupStreamMessage.execute(interaction, options); }
     if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
-    if (commandName ==='remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
+    if (commandName === 'remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
+    // //
+    if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.}
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
 });
@@ -379,4 +440,4 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     }
 });
 
-client.login(process.env.TEST_TOKEN);
+client.login(process.env.LIVE_TOKEN);

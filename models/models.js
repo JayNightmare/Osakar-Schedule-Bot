@@ -64,7 +64,11 @@ const StreamAnnouncement = sequelize.define('StreamAnnouncement', {
     },
     lastAnnouncedAt: {
         type: DataTypes.DATE,
-        allowNull: true // Initially null, updated when an announcement is made
+        allowNull: true
+    },
+    customMessage: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 
@@ -98,7 +102,7 @@ const ReactionRole = sequelize.define('ReactionRoles', {
         await StreamAnnouncement.sync(); // Create the Punishment table if it doesn't exist
         await Server.sync(); // Create the Server table if it doesn't exist
         await ReactionRole.sync(); // Create the ReactionRole table if it doesn't exist
-        await LinkChannel.sync();
+        await LinkChannel.sync(); // Create the LinkChannel table if it doesn't exist
         console.log('Database models synced successfully.');
     } catch (error) {
         console.error('Unable to sync models with the database:', error);
