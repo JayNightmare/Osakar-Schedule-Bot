@@ -190,9 +190,6 @@ const commands = [
             option.setName('title')
                 .setDescription('The title of the embed'))
         .addStringOption(option => 
-            option.setName('description')
-                .setDescription('The description of the embed'))
-        .addStringOption(option => 
             option.setName('color')
                 .setDescription('The color of the embed (hex code, e.g., #ff0000)'))
         .addStringOption(option => 
@@ -203,7 +200,10 @@ const commands = [
                 .setDescription('URL of the main image. Put .jpg if still image, .gif if animated, etc.)'))
         .addChannelOption(option => 
             option.setName('channel')
-                .setDescription('The channel to send the announcement to')),
+                .setDescription('The channel to send the announcement to'))
+        .addStringOption(option => 
+            option.setName('notify_role')
+                .setDescription('The role to be notified when a new stream is detected')),
 
     // //
 
