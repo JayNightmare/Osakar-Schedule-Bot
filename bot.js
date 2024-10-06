@@ -292,7 +292,7 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
     if (commandName === 'remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
     // //
-    if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.}
+    if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.playlistYouTube.execute(interaction, options)}
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
 });
