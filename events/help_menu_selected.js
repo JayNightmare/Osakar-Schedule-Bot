@@ -11,14 +11,8 @@ module.exports = {
                         embed = new EmbedBuilder()
                             .setColor(0x3498db)
                             .setTitle("Admin Commands").setDescription(`
-                            • /mod-ban
-                            • /mod-unban
-                            • /mod-kick
-                            • /mod-warn
-                            • /mod-remove-warning
-                            • /mod-timeout
-                            • /mod-mute
-                            • /mod-unmute
+                            • /set-link-channel - Set the link channel for the bot
+                            • /submit-link - Submit a link to the designated channel
                             `);
                         break;
 
@@ -27,8 +21,7 @@ module.exports = {
                             .setColor(0x3498db)
                             .setTitle("Community Commands").setDescription(`
                             • /help - All Command in the bot
-                            • /setbio - set your bio for your profile
-                            • /profile - Check out your xp and level
+                            • /playlist-video - Add or remove a YouTube video from a playlist
                             `);
                         break;
 
@@ -36,13 +29,12 @@ module.exports = {
                         embed = new EmbedBuilder()
                             .setColor(0x3498db)
                             .setTitle("Configuration Commands").setDescription(`
-                            • /setup-mute-role
-                            • /setup-logging-channel
-                            • /setup-welcome-channel
-                            • /setup-reaction-role
-                            • /setup-milestone
-                            • /remove-milestone
-                            • /setup-levelup-channel
+                            • /setup-reaction-role - Set up reaction role message 
+                            • /setup-stream - Set up a stream to monitor and an announcement channel
+                            • /setup-stream-message - Set up a stream message to monitor and an announcement channel
+                            • /update-stream - Update a stream to monitor and an announcement channel
+                            • /remove-stream - Remove a stream to monitor and an announcement channel
+                            • /view-streams - View all streams to monitor and an announcement channel
                             `);
                         break;
 

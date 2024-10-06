@@ -5,7 +5,15 @@ const {
     setLinkChannel
 } = require('../Utils_Functions/utils-extract-details.js');
 
-const { setStreamDetails, updateStreamDetails, removeStreamDetails, getYouTubeChannelId } = require('../Utils_Functions/utils-uplink.js');
+const { 
+    setStreamDetails, 
+    updateStreamDetails, 
+    removeStreamDetails, 
+    getYouTubeChannelId, 
+    addVideoToPlaylist, 
+    removeVideoFromPlaylist,
+    getYouTubeAccessToken
+} = require('../Utils_Functions/utils-uplink.js');
 
 const reactionRoleConfigurations = new Map();
 
@@ -28,23 +36,30 @@ module.exports = {
             // Prompt user for configuration details
             await interaction.reply({ content: 'Let’s set up your reaction roles. Please reply with the roles, emojis, and message for the embed.' });
     
-            // Use a collector to gather multiple pieces of information interactively
             const filter = m => m.author.id === interaction.user.id;
     
             // Step 1: Get roles and emojis
             await interaction.followUp('Please provide the roles and corresponding emojis in this format: `@Role1 :emoji1:, @Role2 :emoji2:`.');
     
             const rolesAndEmojisMessage = await interaction.channel.awaitMessages({ filter, max: 1, time: 60000 });
-            const rolesAndEmojisContent = rolesAndEmojisMessage.first().content;
+            const rolesAndEmojisContent = rolesAndEmojisMessage ? rolesAndEmojisMessage.first().content : null;
     
             // Check if user provided a valid response
             if (!rolesAndEmojisContent) {
                 return interaction.followUp({ content: 'No roles and emojis provided.' });
             }
     
+            // Validate the format of the input
+            const rolesAndEmojisPairs = rolesAndEmojisContent.split(',').map(item => item.trim());
+            const invalidPairs = rolesAndEmojisPairs.filter(pair => !pair.match(/^<@&\d+>\s*:\S+:/));
+    
+            if (invalidPairs.length > 0) {
+                return interaction.followUp({ content: 'Invalid format for roles and emojis. Please provide the input as `@Role :emoji:` pairs separated by commas.' });
+            }
+    
             // Step 2: Parse roles and emojis
-            const rolesAndEmojis = rolesAndEmojisContent.split(',').map(item => {
-                const [roleMention, emoji] = item.trim().split(/\s+/);
+            const rolesAndEmojis = rolesAndEmojisPairs.map(item => {
+                const [roleMention, emoji] = item.split(/\s+/);
                 const roleId = roleMention.match(/\d+/)[0]; // Extract role ID from mention
                 return { roleId, emoji };
             });
@@ -79,10 +94,10 @@ module.exports = {
                 messageId: message.id,
                 rolesAndEmojis
             });
-
-            let messageId = message.id; 
+    
+            let messageId = message.id;
             let channelId = channel.id;
-
+    
             for (const { roleId, emoji } of rolesAndEmojis) {
                 await ReactionRole.create({
                     guildId: serverId, messageId, channelId, emoji, roleId
@@ -91,7 +106,7 @@ module.exports = {
     
             await interaction.followUp({ content: `Reaction role message has been set up in ${channel}.` });
         }
-    },
+    },    
     
     reactionRoleConfigurations,
     getReactionRoleConfigurations,
@@ -135,12 +150,15 @@ module.exports = {
     setupStreamMessage: {
         execute: async (interaction) => {
             try {
+                const streamAnnouncement = await StreamAnnouncement.findOne({ where: {  guildId: interaction.guildId } });
+
+
                 const platform = interaction.options.getString('platform');
                 const channelId = interaction.options.getString('channel');
-                const announcementChannel = await StreamAnnouncement.announcementChannelId;
+                const announcementChannel = streamAnnouncement.announcementChannelId;
                 const description = interaction.options.getString('message');
                 const guildId = interaction.guildId;
-    
+
                 if (channelId) {
                     // Proceed with setting the stream details in your database
                     await setStreamDetails(guildId, platform, channelId, announcementChannel, description);

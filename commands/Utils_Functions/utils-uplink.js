@@ -1,25 +1,45 @@
 require('dotenv').config();
 const { StreamAnnouncement } = require('../../models/models.js');
 const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
+const oauth2Client = new OAuth2Client(
+    process.env.YOUTUBE_CLIENT_ID,
+    process.env.YOUTUBE_CLIENT_SECRET,
+    process.env.REDIRECT_URI
+);
+
 
 // Save stream details to the database
 async function setStreamDetails(guildId, platform, channelName, announcementChannelId, customMessage) {
-    // Check if the record already exists
-    const [streamAnnouncement, created] = await StreamAnnouncement.findOrCreate({
-        where: { guildId, platform, channelName },
-        defaults: { announcementChannelId, customMessage }
+    // Find the record if it exists
+    const streamAnnouncement = await StreamAnnouncement.findOne({
+        where: { guildId, platform, channelName }
     });
 
-    console.log(`Info: Set stream details for ${platform} ${channelName} in guild ${guildId}. Announcement channel ID: ${announcementChannelId}, custom message: ${customMessage || 'None provided'}.`)
+    // If record exists, check for a custom message
+    if (streamAnnouncement) {
+        if (!customMessage) {
+            console.log(`No custom message provided for ${channelName}.`);
+            return; // or return a message saying no custom message was added
+        }
 
-    // If the record already exists, update the announcement channel ID and custom message (if provided)
-    if (!created) {
-        const updates = { announcementChannelId };
-        if (customMessage) updates.customMessage = customMessage;
-        await streamAnnouncement.update(updates);
+        // Update the record with new details
+        await streamAnnouncement.update({ announcementChannelId, customMessage });
+        return streamAnnouncement;
     }
 
-    return streamAnnouncement;
+    // If the record does not exist, create a new one
+    const newStreamAnnouncement = await StreamAnnouncement.create({
+        guildId,
+        platform,
+        channelName,
+        announcementChannelId,
+        customMessage
+    });
+
+    console.log(`Info: Set stream details for ${platform} ${channelName} in guild ${guildId}. Announcement channel ID: ${announcementChannelId}, custom message: ${customMessage || 'None provided'}.`);
+
+    return newStreamAnnouncement;
 }
 
 async function updateStreamDetails(guildId, platform, channelName, newAnnouncementChannelId) {
@@ -313,6 +333,52 @@ async function removeVideoFromPlaylist(playlistId, videoId, accessToken) {
     }
 }
 
+// //
+
+// YouTube OAuth2 Client
+function getAuthUrl() {
+    return oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: ['https://www.googleapis.com/auth/youtube.force-ssl']
+    });
+}
+
+async function getAccessToken(code) {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+    return tokens.access_token;
+}
+
+async function refreshAccessToken(refreshToken) {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    return credentials.access_token;
+}
+
+async function getYouTubeAccessToken(userId) {
+    // Fetch user tokens from your storage (DB, session)
+    const userTokens = await getUserTokens(userId);
+    
+    if (userTokens.accessToken && !isTokenExpired(userTokens.accessToken)) {
+        return userTokens.accessToken;
+    }
+    
+    if (userTokens.refreshToken) {
+        const newAccessToken = await refreshAccessToken(userTokens.refreshToken);
+        // Save new access token in your storage
+        await saveUserTokens(userId, { accessToken: newAccessToken });
+        return newAccessToken;
+    }
+    
+    // If no tokens available, start OAuth flow
+    const authUrl = getAuthUrl();
+    // Redirect user to authUrl to authorize
+    throw new Error(`Authorize your account by visiting this URL: ${authUrl}`);
+}
+
+
+
+
 module.exports = {
     // Checkers
     checkAllStreams,
@@ -336,4 +402,7 @@ module.exports = {
     // Video Playlist
     addVideoToPlaylist,
     removeVideoFromPlaylist,
+
+    // YouTube OAuth2
+    getYouTubeAccessToken,
 };

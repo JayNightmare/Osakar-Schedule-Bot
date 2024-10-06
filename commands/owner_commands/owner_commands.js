@@ -1,5 +1,6 @@
 // serverinfo.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Server, StreamAnnouncement, ReactionRole, LinkChannel } = require('../../models/models.js');
 
 module.exports = {
     serverCall: {
@@ -90,6 +91,38 @@ module.exports = {
             } catch (err) {
                 console.error('Error fetching server info:', err);
                 return interaction.reply({ content: 'An error occurred while fetching server information.', ephemeral: true });
+            }
+        }
+    },
+
+    leaveServer: {
+        async execute(interaction) {
+            // Check if the user is the bot owner (ensure only the owner can execute this command)
+            const botOwnerId = 'YOUR_DISCORD_USER_ID'; // Replace with your Discord user ID
+            if (interaction.user.id !== botOwnerId) {
+                return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
+            }
+    
+            const serverId = interaction.options.getString('server_id');
+            const guild = interaction.client.guilds.cache.get(serverId);
+    
+            if (!guild) {
+                return interaction.reply({ content: 'The bot is not part of a server with that ID.', ephemeral: true });
+            }
+    
+            try {
+                // Delete the server details from the database
+                await StreamAnnouncement.destroy({ where: { guildId: serverId } });
+                await Server.destroy({ where: { serverId: serverId } });
+                await ReactionRole.destroy({ where: { guildId: serverId } });
+                await LinkChannel.destroy({ where: { guildId: serverId } });
+    
+                // Leave the server
+                await guild.leave();
+                await interaction.reply(`Successfully left the server: ${guild.name} and deleted its records from the database.`);
+            } catch (error) {
+                console.error(`Error leaving server ${serverId}:`, error);
+                await interaction.reply('Failed to leave the server or delete database records. Please check the server ID and try again.');
             }
         }
     }

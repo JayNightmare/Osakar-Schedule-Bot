@@ -60,8 +60,6 @@ const commands = [
     // ! Setup Reaction Commands
     new SlashCommandBuilder()
         .setName('setup-reaction-role')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
-
         .setDescription('Sets up a reaction role message')
         .addChannelOption(option =>
             option.setName('channel')
@@ -181,7 +179,24 @@ const commands = [
                 .addChoices(
                     { name: 'Twitch', value: 'twitch' },
                     { name: 'YouTube', value: 'youtube' }
-                ))
+                )),
+
+    // //
+
+    // ! Help Command
+    new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Displays the list of available commands'),
+
+    // //
+
+    new SlashCommandBuilder()
+        .setName('leave-server')
+        .setDescription('Forces the bot to leave a server based on its ID.')
+        .addStringOption(option => 
+            option.setName('server_id')
+                .setDescription('The ID of the server the bot should leave')
+                .setRequired(true)),
 ].map(command => command.toJSON());;
 
 client.once('ready', async () => {
@@ -291,10 +306,15 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'setup-stream-message') { console.log(`setup stream message command ran`); await configCommands.setupStreamMessage.execute(interaction, options); }
     if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
     if (commandName === 'remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
+    if (commandName === 'view-streams') { console.log(`view streams command ran`); await configCommands.viewStreams.execute(interaction, options); }
     // //
     if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.playlistYouTube.execute(interaction, options)}
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
+    // //
+    if (commandName === 'help') { console.log(`help command ran`); await communityCommands.help.execute(interaction); }
+    // //
+    if (commandName === 'leave-server') { console.log(`leave server command ran`); await ownerCommands.leaveServer.execute(interaction, options); }
 });
 
 
@@ -433,7 +453,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
         // Add the role to the member
         await member.roles.remove(role);
-        console.log(`Added role ${role.name} to user ${user.username}`);
+        console.log(`Removed role ${role.name} to user ${user.username}`);
     } catch (error) {
         console.error('Error adding role based on reaction:', error);
         return;
