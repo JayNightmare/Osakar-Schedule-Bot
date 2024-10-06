@@ -98,7 +98,7 @@ module.exports = {
     leaveServer: {
         async execute(interaction) {
             // Check if the user is the bot owner (ensure only the owner can execute this command)
-            const botOwnerId = 'YOUR_DISCORD_USER_ID'; // Replace with your Discord user ID
+            const botOwnerId = process.env.OWNER; // Replace with your Discord user ID
             if (interaction.user.id !== botOwnerId) {
                 return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
             }

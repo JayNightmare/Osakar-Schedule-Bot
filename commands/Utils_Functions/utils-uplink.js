@@ -120,7 +120,7 @@ async function checkStreamLiveStatus(client, guildId, platform, channelName) {
                     { name: 'Viewers', value: streamData.viewerCount.toString(), inline: true },
                 ],
                 image: { url: streamData.thumbnail },
-                footer: { text: 'Click the link above to watch the stream!' }
+                timestamp: new Date(),
             };
             await announcementChannel.send({ embeds: [embed] });
 
@@ -253,7 +253,7 @@ async function checkAllStreams(client) {
 // //
 
 function extractVideoId(url) {
-    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const match = url.match(regex);
     return match ? match[1] : null;
 }

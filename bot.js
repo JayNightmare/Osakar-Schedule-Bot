@@ -183,6 +183,30 @@ const commands = [
 
     // //
 
+    new SlashCommandBuilder()
+        .setName('announce')
+        .setDescription('Create an announcement with a customizable embed.')
+        .addStringOption(option => 
+            option.setName('title')
+                .setDescription('The title of the embed'))
+        .addStringOption(option => 
+            option.setName('description')
+                .setDescription('The description of the embed'))
+        .addStringOption(option => 
+            option.setName('color')
+                .setDescription('The color of the embed (hex code, e.g., #ff0000)'))
+        .addStringOption(option => 
+            option.setName('footer')
+                .setDescription('The footer text of the embed'))
+        .addStringOption(option => 
+            option.setName('image')
+                .setDescription('URL of the main image. Put .jpg if still image, .gif if animated, etc.)'))
+        .addChannelOption(option => 
+            option.setName('channel')
+                .setDescription('The channel to send the announcement to')),
+
+    // //
+
     // ! Help Command
     new SlashCommandBuilder()
         .setName('help')
@@ -307,6 +331,8 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
     if (commandName === 'remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
     if (commandName === 'view-streams') { console.log(`view streams command ran`); await configCommands.viewStreams.execute(interaction, options); }
+    // //
+    if (commandName === 'announce') { console.log(`announce command ran`); await adminCommands.announce.execute(interaction, options); }
     // //
     if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.playlistYouTube.execute(interaction, options)}
     // //
