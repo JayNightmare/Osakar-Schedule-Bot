@@ -172,14 +172,7 @@ const commands = [
     // ! View Streams In Database
     new SlashCommandBuilder()
         .setName('view-streams')
-        .setDescription('View all streams in the database')
-        .addStringOption(option =>
-            option.setName('platform')
-                .setDescription('Streaming platform (Twitch or YouTube)')
-                .addChoices(
-                    { name: 'Twitch', value: 'twitch' },
-                    { name: 'YouTube', value: 'youtube' }
-                )),
+        .setDescription('View all streams in the database'),
 
     // //
 
@@ -221,7 +214,13 @@ const commands = [
             option.setName('server_id')
                 .setDescription('The ID of the server the bot should leave')
                 .setRequired(true)),
-].map(command => command.toJSON());;
+
+    // //
+
+    new SlashCommandBuilder()
+        .setName('auth-youtube')
+        .setDescription('Authorizes the bot to access YouTube.'),
+].map(command => command.toJSON());
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -321,7 +320,7 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand() && interaction.componentType!== 3) return;
-    const { commandName, options } = interaction; 
+    const { commandName, options } = interaction;
 
     if (commandName === 'set-link-channel') { console.log(`set link channel ran`); await configCommands.setupLinkChannel.execute(interaction, options); }
     if (commandName ==='submit-link') { console.log(`submit link ran`); await communityCommands.submitLink.execute(interaction, options); }
@@ -330,11 +329,13 @@ client.on('interactionCreate', async (interaction) => {
     if (commandName === 'setup-stream-message') { console.log(`setup stream message command ran`); await configCommands.setupStreamMessage.execute(interaction, options); }
     if (commandName === 'update-stream') { console.log(`update stream command ran`); await configCommands.updateStream.execute(interaction, options); }
     if (commandName === 'remove-stream') { console.log(`remove stream command ran`); await configCommands.removeStream.execute(interaction, options); }
-    if (commandName === 'view-streams') { console.log(`view streams command ran`); await configCommands.viewStreams.execute(interaction, options); }
+    if (commandName === 'view-streams') { console.log(`view streams command ran`); await adminCommands.viewStreams.execute(interaction, options); }
     // //
     if (commandName === 'announce') { console.log(`announce command ran`); await adminCommands.announce.execute(interaction, options); }
     // //
-    if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.playlistYouTube.execute(interaction, options)}
+    if (commandName === 'auth-youtube') { console.log(`auth youtube command ran`); await configCommands.authYouTube.execute(interaction, options); }
+    // //
+    if (commandName === 'playlist-video') { console.log(`playlist video command ran`); await configCommands.playlistYouTube.execute(interaction, options) }
     // //
     if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
     // //

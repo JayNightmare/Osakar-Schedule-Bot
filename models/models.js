@@ -15,6 +15,18 @@ const User = sequelize.define('User', {
         allowNull: false,
         primaryKey: true,
     },
+    accessToken: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    refreshToken: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    tokenExpiry: {
+        type: DataTypes.DATE,
+        allowNull: true
+    }
 });
 
 const Server = sequelize.define('Server', {

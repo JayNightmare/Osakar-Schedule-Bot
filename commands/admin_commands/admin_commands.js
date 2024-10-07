@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { StreamAnnouncement } = require('../../models/models');
 
 
 module.exports = {
@@ -71,5 +72,36 @@ module.exports = {
                 return await interaction.followUp({ content: 'Failed to send the announcement. Please check the provided details.', ephemeral: true });
             }
         }
-    }    
+    },
+
+    // //
+
+    viewStreams: {
+        async execute(interaction) {
+            // Check if the user has permission to manage messages
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+                return interaction.reply({ content: 'You do not have permission to view the stream.', ephemeral: true });
+            }
+            
+            const streams = await StreamAnnouncement.findAll({ where: { guildId: interaction.guild.id } });
+            
+            if (!streams.length) { return interaction.reply({ content: 'No streams found for this server.', ephemeral: true }); }
+
+            const embed = new EmbedBuilder()
+                .setTitle('Server Stream Announcements')
+                .setDescription('Here are the live streams for this server:')
+                .setColor('#0099ff')
+                .setTimestamp();
+
+            streams.forEach((stream) => {
+                embed.addFields({
+                    name: `${stream.platform} - ${stream.channelName}`,
+                    value: `Anncounement Channel: <#${stream.announcementChannelId}>\nCustom Message: ${stream.customMessage || 'None'}`,
+                    inline: false
+                });
+            });
+
+            await interaction.reply({ embeds: [embed] });
+        }
+    }
 };

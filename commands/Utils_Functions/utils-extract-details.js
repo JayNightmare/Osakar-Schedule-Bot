@@ -98,6 +98,14 @@ async function fetchInviteDetails(inviteCode) {
     }
 }
 
+// //
+
+function getStreamAnnouncements() {
+    
+}
+
+// //
+
 module.exports = {
     setLinkChannel,
     getLinkChannel,

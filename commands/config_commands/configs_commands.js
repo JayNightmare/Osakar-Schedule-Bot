@@ -12,7 +12,8 @@ const {
     getYouTubeChannelId, 
     addVideoToPlaylist, 
     removeVideoFromPlaylist,
-    getYouTubeAccessToken
+    generateAuthURl,
+    getUserTokens
 } = require('../Utils_Functions/utils-uplink.js');
 
 const reactionRoleConfigurations = new Map();
@@ -209,27 +210,30 @@ module.exports = {
     playlistYouTube: {
         execute: async (interaction) => {
             const action = interaction.options.getString('action'); // 'add' or 'remove'
-            const playlistId = interaction.options.getString('playlistId');
-            const videoId = interaction.options.getString('videoId');
+            const playlistId = interaction.options.getString('playlistid');
+            const url = interaction.options.getString('url');
+
+            // Check value in console log
+            console.log(`Action: ${action}, Playlist ID: ${playlistId}, URL: ${url}`);
 
             if (action === 'add') {
                 try {
                     // Assume you have a function to get an OAuth token for the user
-                    const accessToken = await getYouTubeAccessToken(interaction.user.id);
+                    const accessToken = await getUserTokens(interaction.user.id);
 
                     // Add video to playlist
-                    await addVideoToPlaylist(playlistId, videoId, accessToken);
+                    await addVideoToPlaylist(playlistId, url, accessToken, interaction);
                     await interaction.reply(`Video added to playlist: ${playlistId}`);
                 } catch (error) {
-                    console.error('Error adding video:', error.message);
+                    console.error('Error adding video:', error);
                     await interaction.reply('Failed to add video to playlist.');
                 }
             } else if (action === 'remove') {
                 try {
-                    const accessToken = await getYouTubeAccessToken(interaction.user.id);
+                    const accessToken = await getUserTokens(interaction.user.id);
 
                     // Remove video from playlist
-                    await removeVideoFromPlaylist(playlistId, videoId, accessToken);
+                    await removeVideoFromPlaylist(playlistId, url, accessToken);
                     await interaction.reply(`Video removed from playlist: ${playlistId}`);
                 } catch (error) {
                     console.error('Error removing video:', error.message);
@@ -238,6 +242,12 @@ module.exports = {
             } else {
                 await interaction.reply('Invalid action. Please choose "add" or "remove".');
             }
+        }
+    },
+
+    authYouTube: {
+        execute: async (interaction) => {
+            generateAuthURl(interaction);
         }
     }
 }
