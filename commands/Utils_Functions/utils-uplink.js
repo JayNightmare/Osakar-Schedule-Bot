@@ -45,6 +45,8 @@ app.listen(port, () => {
 });
 
 async function saveUserTokens({ userId, username, guildId, tokens }) {
+    checkAccessTokenPermissions(tokens.access_token)
+
     const [user, created] = await User.findOrCreate({
         where: { userId },
         defaults: { 
@@ -52,7 +54,7 @@ async function saveUserTokens({ userId, username, guildId, tokens }) {
             guildId: guildId,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
-            tokenExpiry: tokens.expiry_date
+            tokenExpiry: Date.now() + 7200 * 1000
         }
     });
 
@@ -63,24 +65,76 @@ async function saveUserTokens({ userId, username, guildId, tokens }) {
             guildId: guildId,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
-            tokenExpiry: tokens.expiry_date
+            tokenExpiry: Date.now() + 7200 * 1000
         });
     }
 
     console.log(`Token saved successfully for user ${userId}`);
 }
 
+function isTokenExpired(expiryDate) {
+    return Date.now() > expiryDate;
+}
+
+async function checkAccessTokenPermissions(accessToken) {
+    console.log(accessToken);
+
+    try {
+        const response = await axios.get(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`);
+
+        if (response.data.scope.includes('https://www.googleapis.com/auth/youtube.force-ssl')) {
+            console.log('Access token has correct permissions.');
+            console.log(accessToken);
+            return true;
+        } else {
+            console.error('Access token does not have required permissions.');
+            console.log(accessToken);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error checking access token permissions:', error.response ? error.response.data : error.message);
+        return false;
+    }
+}
+
+
 // Get user token from database
 async function getUserTokens(userId) {
     const user = await User.findOne({ where: { userId } });
+
     if (!user) {
         throw new Error(`User with ID ${userId} not found.`);
     }
 
+    let { accessToken, refreshToken, expiry_date } = user;
+
+    if (isTokenExpired(expiry_date)) {
+        const newAccessToken = await refreshAccessToken(refreshToken);
+        const newExpiryDate = Date.now() + 7200 * 1000; // 2 hour from now
+
+        // Save the new token details
+        await saveUserTokens({
+            userId,
+            tokens: {
+                access_token: newAccessToken,
+                refresh_token: refreshToken, // Keep the old refresh token
+                expiry_date: newExpiryDate
+            }
+        });
+
+        // Return updated token data
+        return {
+            accessToken: newAccessToken,
+            refreshToken,
+            tokenExpiry: newExpiryDate
+        };
+    }
+
+    // Return current token data if still valid
     return {
-        accessToken: user.accessToken,
-        refreshToken: user.refreshToken,
-        tokenExpiry: user.tokenExpiry
+        accessToken,
+        refreshToken,
+        tokenExpiry: Date.now() + 7200 * 1000
     };
 }
 
@@ -355,21 +409,39 @@ async function checkAllStreams(client) {
 function extractVideoId(url) {
     const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const match = url.match(regex);
+    if (match) {
+        // Remove URL parameters if they exist
+        const videoId = match[1].split('?')[0];
+        return videoId;
+    }
+    return null;
+}
+
+
+function extractPlaylistId(url) {
+    const regex = /[?&]list=([a-zA-Z0-9_-]+)/;
+    const match = url.match(regex);
     return match ? match[1] : null;
 }
 
-async function addVideoToPlaylist(playlistId, url, accessToken, interaction) {
+async function addVideoToPlaylist(vUrl, pUrl, accessToken, interaction) {
     try {
-        const videoId = await extractVideoId(url);
+        const token = accessToken.accessToken || accessToken;
+
+        const videoId = await extractVideoId(vUrl);
+        const playlistId = await extractPlaylistId(pUrl);
+
         // Check value in console log
         console.log(`Adding video ${videoId} to playlist ${playlistId}`);
-        console.log(`Access Token: ${accessToken}`);
+        console.log(`Access Token:`);
+        console.log(token);
 
         if (!videoId) {
-            return interaction.reply('Invalid YouTube URL provided.');
+            await interaction.reply(`Invalid YouTube URL provided: ${vUrl}`);
+            return interaction.reply('Invalid YouTube URL provided');
         }
 
-        const response = await axios.post('https://www.googleapis.com/youtube/v3/playlistItems', {
+        const response = await axios.post('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
             snippet: {
                 playlistId: playlistId,
                 resourceId: {
@@ -379,61 +451,71 @@ async function addVideoToPlaylist(playlistId, url, accessToken, interaction) {
             }
         }, {
             headers: {
-                Authorization: `Bearer ${accessToken}`,
+                Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
+        
+        await interaction.reply(`Video Added: ${vUrl} from ${pUrl}`);
         console.log('Video added:', response.data);
     } catch (error) {
-        console.error('Error adding video:', error);
+        console.error('Error adding video:', error.response.data);
         throw error;
     }
 }
 
-async function removeVideoFromPlaylist(playlistId, videoId, accessToken) {
+async function removeVideoFromPlaylist(vUrl, pUrl, accessToken, interaction) {
     try {
-        const url = interaction.options.getString('url');
-        const videoId = extractVideoId(url);
-        
+        const token = accessToken.accessToken || accessToken;
+
+        const videoId = await extractVideoId(vUrl);
+        const playlistId = await extractPlaylistId(pUrl);
+
+        console.log(`Removing video ${videoId} from playlist ${pUrl}`);
+        console.log(`Access Token:`, token);
+
         if (!videoId) {
-            return interaction.reply('Invalid YouTube URL provided.');
+            return console.log('Invalid YouTube URL provided.');
         }
 
-        // Find the playlistItemId to remove the video from the playlist
-        const playlistItemResponse = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+        // Get the playlist items and retrieve the `playlistItemId`
+        const getPlaylistItemsResponse = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
             params: {
                 part: 'id',
                 playlistId: playlistId,
-                videoId: videoId,
-                key: process.env.YOUTUBE_API_KEY
+                videoId: videoId
             },
             headers: {
-                Authorization: `Bearer ${accessToken}`
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
 
-        const playlistItemId = playlistItemResponse.data.items[0]?.id;
-
-        if (playlistItemId) {
-            // Make delete request
-            await axios.delete(`https://www.googleapis.com/youtube/v3/playlistItems`, {
-                params: {
-                    id: playlistItemId,
-                    key: process.env.YOUTUBE_API_KEY
-                },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            });
-            console.log('Video removed:', playlistItemId);
-        } else {
-            throw new Error('Video not found in playlist');
+        const playlistItem = getPlaylistItemsResponse.data.items[0];
+        if (!playlistItem) {
+            await interaction.reply('Video not found in the playlist')
+            return console.log('Video not found in the playlist.');
         }
+
+        const playlistItemId = playlistItem.id;
+
+        // Delete the video from the playlist using `playlistItemId`
+        const response = await axios.delete(`https://www.googleapis.com/youtube/v3/playlistItems?id=${playlistItemId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        await interaction.reply(`Video removed: ${vUrl} from ${pUrl}`);
+        console.log('Video removed:', response.data);
     } catch (error) {
-        console.error('Error removing video:', error.message);
+        await interaction.reply(`Error Removing Video`);
+        console.error('Error removing video:', error.response?.data || error.message);
         throw error;
     }
 }
+
 
 // //
 

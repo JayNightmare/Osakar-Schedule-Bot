@@ -210,34 +210,31 @@ module.exports = {
     playlistYouTube: {
         execute: async (interaction) => {
             const action = interaction.options.getString('action'); // 'add' or 'remove'
-            const playlistId = interaction.options.getString('playlistid');
-            const url = interaction.options.getString('url');
+            const playlistUrl = interaction.options.getString('playlist_url');
+            const videoUrl = interaction.options.getString('video_url');
 
             // Check value in console log
-            console.log(`Action: ${action}, Playlist ID: ${playlistId}, URL: ${url}`);
+            console.log(`Action: ${action}, Playlist URL: ${playlistUrl}, Video URL: ${videoUrl}`);
 
             if (action === 'add') {
                 try {
                     // Assume you have a function to get an OAuth token for the user
                     const accessToken = await getUserTokens(interaction.user.id);
+                    console.log(accessToken);
 
                     // Add video to playlist
-                    await addVideoToPlaylist(playlistId, url, accessToken, interaction);
-                    await interaction.reply(`Video added to playlist: ${playlistId}`);
+                    await addVideoToPlaylist(videoUrl, playlistUrl, accessToken, interaction);
                 } catch (error) {
-                    console.error('Error adding video:', error);
-                    await interaction.reply('Failed to add video to playlist.');
+                    console.error('Error adding video:', error.response.data);
                 }
             } else if (action === 'remove') {
                 try {
                     const accessToken = await getUserTokens(interaction.user.id);
 
                     // Remove video from playlist
-                    await removeVideoFromPlaylist(playlistId, url, accessToken);
-                    await interaction.reply(`Video removed from playlist: ${playlistId}`);
+                    await removeVideoFromPlaylist(videoUrl, playlistUrl, accessToken, interaction);
                 } catch (error) {
                     console.error('Error removing video:', error.message);
-                    await interaction.reply('Failed to remove video from playlist.');
                 }
             } else {
                 await interaction.reply('Invalid action. Please choose "add" or "remove".');

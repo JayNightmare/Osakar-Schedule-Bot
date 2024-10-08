@@ -159,12 +159,12 @@ const commands = [
                     { name: 'Remove', value: 'remove' }
                 ))
         .addStringOption(option => 
-            option.setName('playlistid')
-                .setDescription('The ID of the YouTube playlist')
+            option.setName('playlist_url')
+                .setDescription('The URL of the YouTube playlist')
                 .setRequired(true))
         .addStringOption(option => 
-            option.setName('url')
-                .setDescription('The url of the YouTube video to add or remove')
+            option.setName('video_url')
+                .setDescription('The URL of the YouTube video to add or remove')
                 .setRequired(true)),
 
     // //
