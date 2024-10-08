@@ -363,6 +363,7 @@ async function addVideoToPlaylist(playlistId, url, accessToken, interaction) {
         const videoId = await extractVideoId(url);
         // Check value in console log
         console.log(`Adding video ${videoId} to playlist ${playlistId}`);
+        console.log(`Access Token: ${accessToken}`);
 
         if (!videoId) {
             return interaction.reply('Invalid YouTube URL provided.');
