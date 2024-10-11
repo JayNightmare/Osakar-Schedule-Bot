@@ -13,6 +13,7 @@ module.exports = {
                             .setTitle("Admin Commands").setDescription(`
                             • /set-link-channel - Set the link channel for the bot
                             • /submit-link - Submit a link to the designated channel
+                            • /announce - Send an announcement to the designated channel
                             `);
                         break;
 
@@ -22,6 +23,7 @@ module.exports = {
                             .setTitle("Community Commands").setDescription(`
                             • /help - All Command in the bot
                             • /playlist-video - Add or remove a YouTube video from a playlist
+                            • /auth-youtube - Authorize the bot to access YouTube
                             `);
                         break;
 

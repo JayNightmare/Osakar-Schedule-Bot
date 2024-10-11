@@ -17,7 +17,7 @@ const port = 3000;
 app.get('/oauth2callback', async (req, res) => {
     const code = req.query.code;
     const state = JSON.parse(req.query.state);
-    const {userId, username, guildId } = state;
+    const { userId, username, guildId } = state;
 
     if (!code) {
         return res.status(400).send('Missing auth code');
@@ -30,18 +30,21 @@ app.get('/oauth2callback', async (req, res) => {
         // Save tokens to the database or your storage (DB, session)
         await saveUserTokens({ userId, username, guildId, tokens });
 
-        // console.log(response.data);
         console.log(`Saving tokens for userId: ${userId}, username: ${username}, guildId: ${guildId}`);
-        res.send('Authentication successful!');
+        
+        // Redirect to the external URL with a success message
+        res.redirect('https://nexusgit.info/oauth2callback?status=success');
     } catch (error) {
         console.error(error);
         console.log(`Saving tokens for userId: ${userId}, username: ${username}, guildId: ${guildId}`);
-        res.send('Authentication failed!');
+        
+        // Redirect to the external URL with a failure message
+        res.redirect('https://nexusgit.info/oauth2callback?status=failure');
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
 });
 
 async function saveUserTokens({ userId, username, guildId, tokens }) {

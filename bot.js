@@ -1,4 +1,4 @@
-const { Client, PermissionsBitField, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events } = require('discord.js');
+const { Client, PermissionsBitField, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events, ActivityType } = require('discord.js');
 require('dotenv').config();
 const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
 
@@ -11,7 +11,8 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences,
     ],
     partials: [
         'MESSAGE',
@@ -225,6 +226,9 @@ const commands = [
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
+    client.user.setActivity('Maintenance Mode', { type: ActivityType.Watching });
+    client.user.setStatus('dnd');
+
     try {
         console.log('Started refreshing application (/) commands');
 
@@ -319,7 +323,7 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isCommand() && interaction.componentType!== 3) return;
+    if (!interaction.isCommand() && interaction.componentType !== 3) return;
     const { commandName, options } = interaction;
 
     if (commandName === 'set-link-channel') { console.log(`set link channel ran`); await configCommands.setupLinkChannel.execute(interaction, options); }

@@ -237,7 +237,7 @@ module.exports = {
                     console.error('Error removing video:', error.message);
                 }
             } else {
-                await interaction.reply('Invalid action. Please choose "add" or "remove".');
+                await interaction.reply('Invalid action. Please choose "add" or "remove"');
             }
         }
     },
