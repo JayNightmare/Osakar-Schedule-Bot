@@ -30,6 +30,12 @@ module.exports = {
 
             const filter = m => m.author.id === interaction.user.id;
             const descriptionResponse = await interaction.channel.awaitMessages({ filter, max: 1, time: 60000, errors: ['time'] });
+
+            // check if description was entered. If not, return to the user "Nothing entered"
+            if (!descriptionResponse.first()) {
+                return interaction.followUp({ content: 'No description provided.' });
+            }
+
             const userDescription = descriptionResponse.first().content;
 
             const description = userDescription === '=close' ? null : userDescription;
