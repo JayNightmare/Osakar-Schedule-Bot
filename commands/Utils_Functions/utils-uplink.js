@@ -33,13 +33,13 @@ app.get('/oauth2callback', async (req, res) => {
         console.log(`Saving tokens for userId: ${userId}, username: ${username}, guildId: ${guildId}`);
         
         // Redirect to the external URL with a success message
-        res.redirect('https://nexusgit.info/oauth2callback?status=success');
+        res.redirect('https://nexusgit.info/pages/info/OAuth/oauth2callback?status=success');
     } catch (error) {
         console.error(error);
         console.log(`Saving tokens for userId: ${userId}, username: ${username}, guildId: ${guildId}`);
         
         // Redirect to the external URL with a failure message
-        res.redirect('https://nexusgit.info/oauth2callback?status=failure');
+        res.redirect('https://nexusgit.info/pages/info/OAuth/oauth2callback?status=failure');
     }
 });
 

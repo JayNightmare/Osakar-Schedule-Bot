@@ -226,7 +226,7 @@ const commands = [
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
-    client.user.setActivity('Maintenance Mode', { type: ActivityType.Watching });
+    client.user.setActivity('Moving to Server', { type: ActivityType.Watching });
     client.user.setStatus('dnd');
 
     try {
