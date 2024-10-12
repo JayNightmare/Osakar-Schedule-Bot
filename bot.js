@@ -1,6 +1,6 @@
 const { Client, PermissionsBitField, SlashCommandBuilder, ChannelType, GatewayIntentBits, REST, Routes, Events, ActivityType } = require('discord.js');
 require('dotenv').config();
-const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.TEST_TOKEN);
 
 const { Server, User, ReactionRole } = require('./models/models.js');
 
@@ -491,4 +491,4 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     }
 });
 
-client.login(process.env.LIVE_TOKEN);
+client.login(process.env.TEST_TOKEN);

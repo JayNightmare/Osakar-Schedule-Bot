@@ -51,8 +51,8 @@ module.exports = {
             }
     
             // Validate the format of the input
-            const rolesAndEmojisPairs = rolesAndEmojisContent.split(',').map(item => item.trim());
-            const invalidPairs = rolesAndEmojisPairs.filter(pair => !pair.match(/^<@&\d+>\s*:\S+:/));
+            const rolesAndEmojisPairs = rolesAndEmojisContent.split(/\s*,\s*/).map(item => item.trim());
+            const invalidPairs = rolesAndEmojisPairs.filter(pair => !pair.match(/^<@&\d+>\s*<a?:\w+:\d+>$/));
     
             if (invalidPairs.length > 0) {
                 return interaction.followUp({ content: 'Invalid format for roles and emojis. Please provide the input as `@Role :emoji:` pairs separated by commas.' });
